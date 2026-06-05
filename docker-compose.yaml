@@ -99,28 +99,24 @@ services:
     networks:
       - home-server-docker-network
 
-  sourcebot:
-    image: ghcr.io/sourcebot-dev/sourcebot:latest
-    container_name: sourcebot
-    restart: always
-    environment:
-      - CONFIG_PATH=/data/config.json
-      - PUID=1000
-      - PGID=1000
-    depends_on:
-      postgres_sb:
-        condition: service_healthy
-      redis_sb:
-        condition: service_healthy
-    ports:
-      - "3003:3000"
-    volumes:
-      - ./data/sourcebot/config.json:/data/config.json
-      - ./data/sourcebot:/data
-    env_file: 
-      - .env
-    networks:
-      - home-server-docker-network
+  # sourcebot: Disabled - needs proper config setup
+  #   image: ghcr.io/sourcebot-dev/sourcebot:latest
+  #   container_name: sourcebot
+  #   restart: always
+  #   depends_on:
+  #     postgres_sb:
+  #       condition: service_healthy
+  #     redis_sb:
+  #       condition: service_healthy
+  #   ports:
+  #     - "3003:3000"
+  #   volumes:
+  #     - ./data/sourcebot/config.json:/data/config.json
+  #     - ./data/sourcebot:/data
+  #   env_file: 
+  #     - .env
+  #   networks:
+  #     - home-server-docker-network
 
   nextcloud:
     image: nextcloud:latest
