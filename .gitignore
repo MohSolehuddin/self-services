@@ -1,0 +1,45 @@
+# Server App - Git Ignore
+
+# Data volumes - Jangan di-commit!
+data/
+*.db
+*.log
+*.sqlite
+*.sqlite3
+
+# Environment variables dengan password
+.env
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*~
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+.next/
+build/
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Docker secrets
+*.pem
+*.key
+*.crt
+
+# Backups lokal (sudah ada backup remote)
+/home/moh_solehuddin190805/backups/

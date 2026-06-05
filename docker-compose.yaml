@@ -1,0 +1,226 @@
+services:
+  db:
+    image: postgres:15
+    container_name: db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./data/postgres_main:/var/lib/postgresql/data
+    networks:
+      - home-server-docker-network
+
+  postgres_sb:
+    image: postgres:16
+    container_name: postgres_sb
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      POSTGRES_USER: ${SB_DB_USER}
+      POSTGRES_PASSWORD: ${SB_DB_PASSWORD}
+      POSTGRES_DB: sourcebot
+    volumes:
+      - ./data/postgres_sb:/var/lib/postgresql/data
+    networks:
+      - home-server-docker-network
+
+  redis_sb:
+    image: redis:7
+    container_name: redis_sb
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 10s
+      retries: 10
+    networks:
+      - home-server-docker-network
+
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: always
+    ports:
+      - "9999:80"
+    volumes:
+      - ./data:/srv 
+      - ./data/filebrowser/filebrowser.db:/database.db
+    command: [ "--database", "/database.db" ] 
+    environment:
+      - PUID=1000
+      - PGID=1000
+    networks:
+      - home-server-docker-network
+
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: always
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=db:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=${DB_USER}
+      - GITEA__database__PASS=${DB_PASSWORD}
+    volumes:
+      - ./data/gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3005:3000"
+      - "2222:22"
+    depends_on:
+      - db
+    networks:
+      - home-server-docker-network
+
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code_server
+    restart: always
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Jakarta
+      - PASSWORD=${CODESERVER_PASSWORD}
+      - DEFAULT_WORKSPACE=/config/workspace
+    volumes:
+      - ./data/code-config:/config
+      - .:/config/workspace
+    ports:
+      - "8443:8443"
+    networks:
+      - home-server-docker-network
+
+  sourcebot:
+    image: ghcr.io/sourcebot-dev/sourcebot:latest
+    container_name: sourcebot
+    restart: always
+    environment:
+      - CONFIG_PATH=/data/config.json
+      - PUID=1000
+      - PGID=1000
+    depends_on:
+      postgres_sb:
+        condition: service_healthy
+      redis_sb:
+        condition: service_healthy
+    ports:
+      - "3003:3000"
+    volumes:
+      - ./data/sourcebot/config.json:/data/config.json
+      - ./data/sourcebot:/data
+    env_file: 
+      - .env
+    networks:
+      - home-server-docker-network
+
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud_app
+    restart: always
+    volumes:
+      - ./data/nextcloud/html:/var/www/html
+      - ./data/nextcloud/config:/var/www/html/config
+      - ./data/nextcloud/data:/var/www/html/data
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - db
+    networks:
+      - home-server-docker-network
+
+  trilium:
+    image: zadam/trilium:latest
+    container_name: trilium
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - 8081:8080
+    volumes:
+      - ./data/trilium:/home/node/trilium-data
+    networks:
+      - home-server-docker-network
+
+  actual_server:
+    image: actualbudget/actual-server:latest
+    container_name: actual_server
+    restart: unless-stopped
+    ports:
+      - '5006:5006'
+    volumes:
+      - ./data/actual:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'node src/scripts/health-check.js']
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - home-server-docker-network
+
+  waha:
+    image: devlikeapro/waha
+    container_name: waha
+    restart: always
+    ports:
+      - "3004:3000"
+    volumes:
+      - ./data/.sessions:/app/.sessions
+    env_file:
+      - .env
+    networks:
+      - home-server-docker-network
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: open-webui
+    restart: always
+    ports:
+      - "8888:8080"
+    environment:
+      - WEBUI_NAME=Ollama UI - Mr. Soleh
+      - DEFAULT_MODEL=ministral-3:14b
+      - WEBUI_AUTH=true
+      - ADMIN_EMAIL=mrsoleh@msytc.my.id
+      - ADMIN_PASSWORD=pass1234
+      - OLLAMA_BASE_URL=http://10.148.0.1:11434
+    volumes:
+      - ./data/open-webui:/app/backend/data
+    networks:
+      - home-server-docker-network
+
+  firefox:
+    image: lscr.io/linuxserver/firefox:latest
+    container_name: firefox
+    restart: unless-stopped
+    security_opt:
+      - seccomp=unconfined
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Jakarta
+      - PASSWORD=Secret
+    volumes:
+      - ./data/firefox:/config
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    shm_size: "4gb"
+
+networks:
+  home-server-docker-network:
+    driver: bridge
