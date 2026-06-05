@@ -99,24 +99,26 @@ services:
     networks:
       - home-server-docker-network
 
-  # sourcebot: Disabled - needs proper config setup
-  #   image: ghcr.io/sourcebot-dev/sourcebot:latest
-  #   container_name: sourcebot
-  #   restart: always
-  #   depends_on:
-  #     postgres_sb:
-  #       condition: service_healthy
-  #     redis_sb:
-  #       condition: service_healthy
-  #   ports:
-  #     - "3003:3000"
-  #   volumes:
-  #     - ./data/sourcebot/config.json:/data/config.json
-  #     - ./data/sourcebot:/data
-  #   env_file: 
-  #     - .env
-  #   networks:
-  #     - home-server-docker-network
+  sourcebot:
+    image: ghcr.io/sourcebot-dev/sourcebot:latest
+    container_name: sourcebot
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - CONFIG_PATH=/data/config.json
+      - AUTH_SECRET=${AUTH_SECRET}
+      - SOURCEBOT_ENCRYPTION_KEY=${SOURCEBOT_ENCRYPTION_KEY}
+      - DATABASE_URL=postgresql://${SB_DB_USER}:${SB_DB_PASSWORD}@postgres_sb:5432/${SB_DB_USER:-sourcebot}
+      - REDIS_URL=redis://redis_sb:6379
+      - GITHUB_PAT=${GITHUB_PAT}
+    ports:
+      - "3003:3000"
+    volumes:
+      - ./data/sourcebot/config.json:/data/config.json:ro
+      - sourcebot-data:/data/.sourcebot
+    networks:
+      - home-server-docker-network
 
   nextcloud:
     image: nextcloud:latest
@@ -220,3 +222,7 @@ services:
 networks:
   home-server-docker-network:
     driver: bridge
+
+volumes:
+  sourcebot-data:
+    driver: local
