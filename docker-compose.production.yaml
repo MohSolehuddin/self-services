@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: budget-postgres
+    environment:
+      POSTGRES_DB: budget_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ***
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - production-network
+
+  # Actual Budget Server
+  actual_budget:
+    image: actualbudget/actual-server:latest
+    container_name: actual-budget
+    environment:
+      - PORT=5006
+    ports:
+      - "5006:5006"
+    volumes:
+      - actual_budget_data:/data
+    networks:
+      - production-network
+
+  # Budget Service (API Gateway)
+  budget_service:
+    build:
+      context: ./integrate-actual-budget-service
+      dockerfile: Dockerfile
+    container_name: budget-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=budget_service
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=***
+      - ACTUAL_BASE_URL=http://actual_budget:5006
+      - ACTUAL_DEFAULT_PASSWORD=***
+      - JWT_SECRET=super-…1898
+      - JWT_EXPIRES_IN=7d
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - actual_budget
+    networks:
+      - production-network
+
+  # WAHA (WhatsApp HTTP API)
+  waha:
+    image: devlikeapro/waha
+    container_name: waha-whatsapp
+    ports:
+      - "3000:3000"
+    volumes:
+      - waha_sessions:/app/.sessions
+    networks:
+      - production-network
+
+  # Personal Bot (Go Fiber)
+  personal_bot:
+    build:
+      context: ./personal-bot
+      dockerfile: Dockerfile
+    container_name: personal-bot
+    ports:
+      - "3002:3001"
+    environment:
+      - PORT=3001
+      - WAHA_API_URL=http://waha-whatsapp:3000/api/sendText
+      - WAHA_API_KEY=***
+      - ACTUAL_BUDGET_URL=http://actual_budget:5006
+      - ACTUAL_BUDGET_PASSWORD=***
+      - ACTUAL_BUDGET_ID=***
+      - ACTUAL_ACCOUNT_ID=***
+      - GEMINI_API_KEY=***
+    depends_on:
+      - waha
+      - actual_budget
+    networks:
+      - production-network
+
+  # Ollama API Gateway
+  ollama_gateway:
+    build:
+      context: ./integrate-ollama
+      dockerfile: Dockerfile
+    container_name: ollama-gateway
+    ports:
+      - "3003:3002"
+    environment:
+      - PORT=3002
+      - OLLAMA_URL=http://ollama:11434
+      - BUDGET_SERVICE_URL=http://budget-service:3001
+      - JWT_SECRET=super-…1898
+      - JWT_EXPIRES_IN=7d
+    depends_on:
+      - budget_service
+      - ollama
+    networks:
+      - production-network
+
+  # Ollama AI Server
+  ollama:
+    image: ollama/ollama:0.5.7
+    container_name: ollama-ai
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/ollama
+    networks:
+      - production-network
+
+volumes:
+  postgres_data:
+  actual_budget_data:
+  waha_sessions:
+  ollama_data:
+
+networks:
+  production-network:
+    driver: bridge
