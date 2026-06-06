@@ -1,0 +1,16 @@
+sourcebot:
+  image: ghcr.io/sourcebot-dev/sourcebot:latest
+  pull_policy: always
+  restart: always
+  container_name: sourcebot
+  depends_on:
+    postgres_sb:
+      condition: service_healthy
+    redis_sb:
+      condition: service_healthy
+  ports:
+    - "3003:3000"
+  volumes:
+    - ./data/sourcebot:/data
+  env_file:
+    - .env

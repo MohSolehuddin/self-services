@@ -89,7 +89,7 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Asia/Jakarta
-      - PASSWORD=${CODESERVER_PASSWORD}
+      - PASSWORD=*** 
       - DEFAULT_WORKSPACE=/config/workspace
     volumes:
       - ./data/code-config:/config
@@ -107,8 +107,8 @@ services:
       - .env
     environment:
       - CONFIG_PATH=/data/config.json
-      - AUTH_SECRET=${AUTH_SECRET}
-      - SOURCEBOT_ENCRYPTION_KEY=${SOURCEBOT_ENCRYPTION_KEY}
+      - AUTH_SECRET=*** 
+      - SOURCEBOT_ENCRYPTION_KEY=$${SOUR...KEY}
       - DATABASE_URL=postgresql://${SB_DB_USER}:${SB_DB_PASSWORD}@postgres_sb:5432/${SB_DB_USER:-sourcebot}
       - REDIS_URL=redis://redis_sb:6379
       - GITHUB_PAT=${GITHUB_PAT}
@@ -132,7 +132,7 @@ services:
       - POSTGRES_HOST=db
       - POSTGRES_DB=nextcloud
       - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_PASSWORD=*** 
     depends_on:
       - db
     networks:
@@ -183,6 +183,18 @@ services:
     networks:
       - home-server-docker-network
 
+  ollama-proxy:
+    build: ./ollama-proxy
+    container_name: ollama-proxy
+    restart: always
+    ports:
+      - "11435:11435"
+    environment:
+      - OLLAMA_API_KEY=43f189ff4cb74195b3104a02cf1af25f.16j3wT6nc2RUtcgfgI8iW3_J
+      - PORT=11435
+    networks:
+      - home-server-docker-network
+
   open-webui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: open-webui
@@ -191,15 +203,17 @@ services:
       - "8888:8080"
     environment:
       - WEBUI_NAME=Ollama UI - Mr. Soleh
-      - DEFAULT_MODEL=ministral-3:14b
+      - DEFAULT_MODEL=qwen3-coder-next
       - WEBUI_AUTH=true
       - ADMIN_EMAIL=mrsoleh@msytc.my.id
-      - ADMIN_PASSWORD=pass1234
-      - OLLAMA_BASE_URL=http://10.148.0.1:11434
+      - ADMIN_PASSWORD=*** 
+      - OLLAMA_BASE_URL=http://ollama-proxy:11435
     volumes:
       - ./data/open-webui:/app/backend/data
     networks:
       - home-server-docker-network
+    depends_on:
+      - ollama-proxy
 
   firefox:
     image: lscr.io/linuxserver/firefox:latest
@@ -211,13 +225,41 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Asia/Jakarta
-      - PASSWORD=Secret
+      - PASSWORD=*** 
     volumes:
       - ./data/firefox:/config
     ports:
       - "3000:3000"
-      - "3001:3001"
     shm_size: "4gb"
+
+  integrate-ollama:
+    build: ./integrate-ollama
+    container_name: integrate-ollama
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - BUDGET_SERVICE_URL=http://integrate-actual-budget-service:3001
+      - NODE_ENV=production
+    networks:
+      - home-server-docker-network
+    depends_on:
+      - integrate-actual-budget-service
+
+  integrate-actual-budget-service:
+    build: ./integrate-actual-budget-service
+    container_name: integrate-actual-budget-service
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - ACTUAL_BASE_URL=http://actual_server:5006
+      - NODE_ENV=production
+    networks:
+      - home-server-docker-network
+    depends_on:
+      - actual_server
 
 networks:
   home-server-docker-network:

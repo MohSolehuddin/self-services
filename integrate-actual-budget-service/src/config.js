@@ -4,7 +4,13 @@ require('dotenv').config();
 module.exports = {
   // Budget Service
   PORT: process.env.PORT || 3001,
-  DATABASE_PATH: process.env.DATABASE_PATH || './database.sqlite',
+
+  // PostgreSQL Database
+  POSTGRES_HOST: process.env.POSTGRES_HOST || 'localhost',
+  POSTGRES_PORT: process.env.POSTGRES_PORT || '5432',
+  POSTGRES_DB: process.env.POSTGRES_DB || 'budget_service',
+  POSTGRES_USER: process.env.POSTGRES_USER || 'postgres',
+  POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'postgres',
 
   // Actual Budget (HTTPS domain)
   ACTUAL_BASE_URL: process.env.ACTUAL_BASE_URL || 'https://actual-budget.msytc.my.id',
