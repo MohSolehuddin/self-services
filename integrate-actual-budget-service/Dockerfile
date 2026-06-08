@@ -13,15 +13,19 @@ RUN npm install --omit=dev
 
 # Copy application code
 COPY src/ ./src/
+
 # Copy .env file from host (pastikan .env sudah ada di build context)
 COPY .env* ./
+
 # Jika .env tidak ada, .env.example akan jadi fallback
 RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /app
+    adduser -S nodejs -u 1001 -G nodejs
+
+# Fix permissions for all files (pastikan nodejs bisa baca semua file)
+RUN chown -R nodejs:nodejs /app
 
 USER nodejs
 
