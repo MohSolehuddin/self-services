@@ -70,4 +70,36 @@ router.post('/transactions', async (req, res) => {
   }
 });
 
+// GET /api/budget/export-tsv - Export transactions to TSV format
+router.get('/export-tsv', async (req, res) => {
+  try {
+    const senderId = req.headers['x-telegram-sender'] || 'default';
+
+    const tsvContent = await budgetService.exportTransactionsToTSV(senderId);
+
+    res.setHeader('Content-Type', 'text/tab-separated-values');
+    res.setHeader('Content-Disposition', 'attachment; filename="transactions.tsv"');
+    res.send(tsvContent);
+  } catch (error) {
+    console.error('Error exporting transactions:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/budget/export-csv - Export transactions to CSV format
+router.get('/export-csv', async (req, res) => {
+  try {
+    const senderId = req.headers['x-telegram-sender'] || 'default';
+
+    const csvContent = await budgetService.exportTransactionsToCSV(senderId);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="transactions.csv"');
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting transactions:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
