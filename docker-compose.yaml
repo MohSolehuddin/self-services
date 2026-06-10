@@ -253,8 +253,10 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
+    env_file:
+      - ./integrate-actual-budget-service/.env
     environment:
-      - ACTUAL_BASE_URL=http://actual_server:5006
+      - ACTUAL_SERVER_URL=http://actual_server:5006
       - NODE_ENV=production
     networks:
       - home-server-docker-network
